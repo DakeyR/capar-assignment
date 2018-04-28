@@ -35,6 +35,10 @@ rgb8_t heat_lut(float x)
     auto r = static_cast<std::uint8_t>((x - x1) / x0 * 255);
     return rgb8_t{r, 255, 0};
   }
+  else if (x >= 1)
+  {
+    return rgb8_t{0, 0, 0};
+  }
   else
   {
     auto b = static_cast<std::uint8_t>((1.f - x) / x0 * 255);
@@ -53,24 +57,46 @@ void render(std::byte* buffer,
             std::ptrdiff_t stride,
             int n_iterations)
 {
-  for (int y = 0; y < height; ++y)
+  float histogram[n_iterations];
+  int pixels[width * height];
+
+  for (int i = 0; i < n_iterations; i++)
+    histogram[i] = 0.0;
+
+  int total = 0;
+  for (int j = 0; j < height; ++j)
   {
     rgb8_t* lineptr = reinterpret_cast<rgb8_t*>(buffer);
 
-    float y0 = scale((float)y, 0.0, (float)height, Y_Low, Y_High);
-    for (int x = 0; x < width; ++x){
-      float x0 = scale((float)x, 0.0, (float)width, X_Low, X_High);
+
+    float y0 = scale((float)j, 0.0, (float)height, Y_Low, Y_High);
+    for (int i = 0; i < width; ++i){
+      float x0 = scale((float)i, 0.0, (float)width, X_Low, X_High);
       int iteration = 0;
-      float nx = 0.0;
-      float ny = 0.0;
-      while (nx * nx + ny * ny < 4 && iteration < n_iterations) {
-        auto xtemp = nx * nx - ny * ny + x0;
-        ny = 2 * nx * ny + y0;
-        nx = xtemp;
+      float x = 0.0;
+      float y = 0.0;
+      while (x * x + y * y < 4.0 && iteration < n_iterations) {
+        float xtemp = x * x - y * y + x0;
+        y = 2 * x * y + y0;
+        x = xtemp;
         iteration = iteration + 1;
       }
-      lineptr[x] = heat_lut(iteration/n_iterations);
+      total += iteration;
+      pixels[j * width + i] = iteration;
+      histogram[iteration]++;
       //lineptr[x] = heat_lut((nx * nx + ny * ny) / float(width * width + height * height));
+    }
+  }
+  for (int j = 0; j < height; j++)
+  {
+    rgb8_t* lineptr = reinterpret_cast<rgb8_t*>(buffer);
+    for (int i = 0; i < width; i++)
+    {
+      float hue = 0.0;
+      int iter = pixels[j * width + i];
+      for (int k = 0; k < iter; k++)
+        hue += histogram[k] / total;
+      lineptr[i] = heat_lut(hue);
     }
     buffer += stride;
   }
