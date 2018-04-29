@@ -1,6 +1,7 @@
 #include "render.hpp"
 #include <cstdint>
 #include <cassert>
+#include <vector>
 
 #define X_Low -2.5
 #define X_High 1.0
@@ -35,20 +36,11 @@ rgb8_t heat_lut(float x)
     auto r = static_cast<std::uint8_t>((x - x1) / x0 * 255);
     return rgb8_t{r, 255, 0};
   }
-  else if (x >= 1)
-  {
-    return rgb8_t{0, 0, 0};
-  }
   else
   {
     auto b = static_cast<std::uint8_t>((1.f - x) / x0 * 255);
     return rgb8_t{255, b, 0};
   }
-}
-
-static float scale(float x, float c_low, float c_high, float mandel_low, float mandel_high)
-{
-  return mandel_low + ((mandel_high - mandel_low)/(c_high - c_low)) * (x - c_low);
 }
 
 void render(std::byte* buffer,
@@ -57,36 +49,42 @@ void render(std::byte* buffer,
             std::ptrdiff_t stride,
             int n_iterations)
 {
-  float histogram[n_iterations];
+  std::vector<int> histogram(n_iterations);
   int pixels[width * height];
 
   for (int i = 0; i < n_iterations; i++)
     histogram[i] = 0.0;
 
-  int total = 0;
+  //int total = 0;
   for (int j = 0; j < height; ++j)
   {
-    rgb8_t* lineptr = reinterpret_cast<rgb8_t*>(buffer);
 
+    float y0 = float(j) / float(height) * 2 - 1;
 
-    float y0 = scale((float)j, 0.0, (float)height, Y_Low, Y_High);
     for (int i = 0; i < width; ++i){
-      float x0 = scale((float)i, 0.0, (float)width, X_Low, X_High);
+
+      float x0 = float(i) / float(width) * 3.5 - 2.5;
       int iteration = 0;
       float x = 0.0;
       float y = 0.0;
-      while (x * x + y * y < 4.0 && iteration < n_iterations) {
+
+      while (x * x + y * y < 2 * 2 && iteration < n_iterations) {
         float xtemp = x * x - y * y + x0;
         y = 2 * x * y + y0;
         x = xtemp;
         iteration = iteration + 1;
       }
-      total += iteration;
+
+//      total += 1;//iteration;
       pixels[j * width + i] = iteration;
-      histogram[iteration]++;
+      histogram[iteration] += 1;
       //lineptr[x] = heat_lut((nx * nx + ny * ny) / float(width * width + height * height));
     }
   }
+  int total = 0;
+  for (int val: histogram)
+    total += val;
+
   for (int j = 0; j < height; j++)
   {
     rgb8_t* lineptr = reinterpret_cast<rgb8_t*>(buffer);
@@ -94,8 +92,13 @@ void render(std::byte* buffer,
     {
       float hue = 0.0;
       int iter = pixels[j * width + i];
-      for (int k = 0; k < iter; k++)
-        hue += histogram[k] / total;
+      if (iter == n_iterations)
+      {
+        lineptr[i] = rgb8_t{0,0,0};
+        continue;
+      }
+      for (int k = 0; k <= iter; k++)
+        hue += (float(histogram[k]) / float(total));
       lineptr[i] = heat_lut(hue);
     }
     buffer += stride;
