@@ -55,15 +55,14 @@ void render(std::byte* buffer,
   for (int i = 0; i < n_iterations; i++)
     histogram[i] = 0.0;
 
-  //int total = 0;
   for (int j = 0; j < height; ++j)
   {
 
-    float y0 = float(j) / float(height) * 2 - 1;
+    double y0 = double(j) / double(height - 1) * 2 - 1;
 
     for (int i = 0; i < width; ++i){
 
-      float x0 = float(i) / float(width) * 3.5 - 2.5;
+      double x0 = double(i) / double(width - 1) * 3.5 - 2.5;
       int iteration = 0;
       float x = 0.0;
       float y = 0.0;
@@ -75,10 +74,8 @@ void render(std::byte* buffer,
         iteration = iteration + 1;
       }
 
-//      total += 1;//iteration;
       pixels[j * width + i] = iteration;
       histogram[iteration] += 1;
-      //lineptr[x] = heat_lut((nx * nx + ny * ny) / float(width * width + height * height));
     }
   }
   int total = 0;
@@ -90,7 +87,7 @@ void render(std::byte* buffer,
     rgb8_t* lineptr = reinterpret_cast<rgb8_t*>(buffer);
     for (int i = 0; i < width; i++)
     {
-      float hue = 0.0;
+      double hue = 0.0;
       int iter = pixels[j * width + i];
       if (iter == n_iterations)
       {
@@ -98,7 +95,7 @@ void render(std::byte* buffer,
         continue;
       }
       for (int k = 0; k <= iter; k++)
-        hue += (float(histogram[k]) / float(total));
+        hue += (double(histogram[k]) / double(total));
       lineptr[i] = heat_lut(hue);
     }
     buffer += stride;
