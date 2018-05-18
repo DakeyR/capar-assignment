@@ -49,11 +49,10 @@ void render(std::byte* buffer,
             std::ptrdiff_t stride,
             int n_iterations)
 {
-  std::vector<int> histogram(n_iterations);
+  std::vector<int> histogram(n_iterations, 0);
   int pixels[width * height];
 
-  for (int i = 0; i < n_iterations; i++)
-    histogram[i] = 0.0;
+  unsigned int total = 0;
 
   for (int j = 0; j < height; ++j)
   {
@@ -76,11 +75,10 @@ void render(std::byte* buffer,
 
       pixels[j * width + i] = iteration;
       histogram[iteration] += 1;
+      if (iteration < n_iterations)
+        total++;
     }
   }
-  int total = 0;
-  for (int val: histogram)
-    total += val;
 
   for (int j = 0; j < height; j++)
   {
