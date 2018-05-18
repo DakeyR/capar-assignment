@@ -50,11 +50,12 @@ void render(std::byte* buffer,
             int n_iterations)
 {
   std::vector<int> histogram(n_iterations, 0);
-  int pixels[width * height];
+  std::vector<int> pixels(width * height, 0);
 
   unsigned int total = 0;
+  auto height_limit = height & 0x1 ? (height / 2) + 1 : height / 2;
 
-  for (int j = 0; j < height; ++j)
+  for (int j = 0; j < height_limit; ++j)
   {
 
     double y0 = double(j) / double(height - 1) * 2 - 1;
@@ -74,9 +75,12 @@ void render(std::byte* buffer,
       }
 
       pixels[j * width + i] = iteration;
-      histogram[iteration] += 1;
-      if (iteration < n_iterations)
+      pixels[(height - 1 - j) * width + i] = iteration;
+      //histogram[iteration] += 1;
+      if (iteration < n_iterations) {
         total++;
+        histogram[iteration] += 1;
+      }
     }
   }
 
