@@ -2,6 +2,8 @@
 #include <cstdint>
 #include <cassert>
 #include <vector>
+#include <tbb/parallel_for.h>
+#include <tbb/blocked_range.h>
 
 #define X_Low -2.5
 #define X_High 1.0
@@ -49,7 +51,7 @@ void render(std::byte* buffer,
             std::ptrdiff_t stride,
             int n_iterations)
 {
-  std::vector<int> histogram(n_iterations, 0);
+  std::vector<int> histogram(n_iterations + 1, 0);
   std::vector<int> pixels(width * height, 0);
 
   unsigned int total = 0;
@@ -76,13 +78,12 @@ void render(std::byte* buffer,
 
       pixels[j * width + i] = iteration;
       pixels[(height - 1 - j) * width + i] = iteration;
-      //histogram[iteration] += 1;
-      if (iteration < n_iterations) {
-        total++;
-        histogram[iteration] += 1;
-      }
+      total++;
+      histogram[iteration] += 1;
     }
   }
+
+  total -= histogram[histogram.size() - 1];
 
   for (int j = 0; j < height; j++)
   {
@@ -111,5 +112,72 @@ void render_mt(std::byte* buffer,
                std::ptrdiff_t stride,
                int n_iterations)
 {
-  render(buffer, width, height, stride, n_iterations);
+  std::vector<int> histogram(n_iterations + 1, 0);
+  std::vector<int> pixels(width * height, 0);
+
+  unsigned int total = 0;
+  unsigned long height_limit = height & 0x1 ? (height / 2) + 1 : height / 2;
+
+  auto f = [&](const tbb::blocked_range<size_t>& range){
+    for (unsigned j = range.begin(); j < range.end(); ++j)
+    {
+
+      double y0 = double(j) / double(height - 1) * 2 - 1;
+
+      for (int i = 0; i < width; ++i)
+      {
+        double x0 = double(i) / double(width - 1) * 3.5 - 2.5;
+        int iteration = 0;
+        float x = 0.0;
+        float y = 0.0;
+
+        while (x * x + y * y < 2 * 2 && iteration < n_iterations) {
+          float xtemp = x * x - y * y + x0;
+          y = 2 * x * y + y0;
+          x = xtemp;
+          iteration = iteration + 1;
+        }
+
+        pixels[j * width + i] = iteration;
+        pixels[(height - 1 - j) * width + i] = iteration;
+        //histogram[iteration] += 1;
+        //TODO: Fix race conditions here 
+        /*if (iteration < n_iterations) {
+          total++;
+          histogram[iteration] += 1;
+        }*/
+      }
+    }
+  };
+
+  for (int k = 0; k < height_limit; k++)
+  {
+    total += 2;
+    histogram[pixels[k]] += 2;
+  }
+
+  total -= 2 * histogram[histogram.size() - 1];
+
+  const tbb::blocked_range<size_t>& half_range{0, height_limit};
+  tbb::parallel_for(half_range, f);
+
+  //TODO: Fix range of this loop (computing twice the same lut)...
+  for (int j = 0; j < height; j++)
+  {
+    rgb8_t* lineptr = reinterpret_cast<rgb8_t*>(buffer);
+    for (int i = 0; i < width; i++)
+    {
+      double hue = 0.0;
+      int iter = pixels[j * width + i];
+      if (iter == n_iterations)
+      {
+        lineptr[i] = rgb8_t{0,0,0};
+        continue;
+      }
+      for (int k = 0; k <= iter; k++)
+        hue += (double(histogram[k]) / double(total));
+      lineptr[i] = heat_lut(hue);
+    }
+    buffer += stride;
+  }
 }
