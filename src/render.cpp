@@ -85,9 +85,11 @@ void render(std::byte* buffer,
 
   total -= histogram[histogram.size() - 1];
 
-  for (int j = 0; j < height; j++)
+  std::byte *buff_start = buffer;
+  for (int j = 0; j < height_limit; j++)
   {
     rgb8_t* lineptr = reinterpret_cast<rgb8_t*>(buffer);
+    rgb8_t* lineptr_sym = reinterpret_cast<rgb8_t*>(buff_start + stride * (height - 1) - j * stride);
     for (int i = 0; i < width; i++)
     {
       double hue = 0.0;
@@ -100,6 +102,7 @@ void render(std::byte* buffer,
       for (int k = 0; k <= iter; k++)
         hue += (double(histogram[k]) / double(total));
       lineptr[i] = heat_lut(hue);
+      lineptr_sym[i] = lineptr[i];
     }
     buffer += stride;
   }
@@ -162,9 +165,12 @@ void render_mt(std::byte* buffer,
   tbb::parallel_for(half_range, f);
 
   //TODO: Fix range of this loop (computing twice the same lut)...
-  for (int j = 0; j < height; j++)
+
+  std::byte *buff_start = buffer;
+  for (int j = 0; j < height_limit; j++)
   {
     rgb8_t* lineptr = reinterpret_cast<rgb8_t*>(buffer);
+    rgb8_t* lineptr_sym = reinterpret_cast<rgb8_t*>(buff_start + stride * (height - 1) - j * stride);
     for (int i = 0; i < width; i++)
     {
       double hue = 0.0;
@@ -177,6 +183,7 @@ void render_mt(std::byte* buffer,
       for (int k = 0; k <= iter; k++)
         hue += (double(histogram[k]) / double(total));
       lineptr[i] = heat_lut(hue);
+      lineptr_sym[i] = lineptr[i];
     }
     buffer += stride;
   }

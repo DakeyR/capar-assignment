@@ -5,7 +5,7 @@ find_package(SDL2 REQUIRED)
 find_package(benchmark REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -ltbb -fopenmp")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -march=native -ltbb -fopenmp")
 set(CMAKE_CXX_RELEASE_FLAGS "${CMAKE_CXX_RELEASE_FLAGS} -O3 -march=native -ltbb -ltbb_malloc")
 
 include_directories(lib/include)
