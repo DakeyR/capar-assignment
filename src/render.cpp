@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cassert>
 #include <vector>
+#include <iostream>
 #include <tbb/parallel_for.h>
 #include <tbb/blocked_range.h>
 
@@ -77,7 +78,7 @@ void render(std::byte* buffer,
       }
 
       pixels[j * width + i] = iteration;
-      pixels[(height - 1 - j) * width + i] = iteration;
+      //pixels[(height - 1 - j) * width + i] = iteration;
       total++;
       histogram[iteration] += 1;
     }
@@ -142,27 +143,21 @@ void render_mt(std::byte* buffer,
         }
 
         pixels[j * width + i] = iteration;
-        pixels[(height - 1 - j) * width + i] = iteration;
-        //histogram[iteration] += 1;
-        //TODO: Fix race conditions here 
-        /*if (iteration < n_iterations) {
-          total++;
-          histogram[iteration] += 1;
-        }*/
+        //pixels[(height - 1 - j) * width + i] = iteration;
       }
     }
   };
 
-  for (int k = 0; k < height_limit; k++)
-  {
-    total += 2;
-    histogram[pixels[k]] += 2;
-  }
-
-  total -= 2 * histogram[histogram.size() - 1];
-
   const tbb::blocked_range<size_t>& half_range{0, height_limit};
   tbb::parallel_for(half_range, f);
+
+  for (int k = 0; k < height_limit * width; k++)
+  {
+    histogram[pixels[k]]++;
+  }
+
+  total = height_limit * width  - histogram[histogram.size() - 1];
+
 
   //TODO: Fix range of this loop (computing twice the same lut)...
 
