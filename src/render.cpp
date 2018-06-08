@@ -148,7 +148,7 @@ void render_mt(std::byte* buffer,
     }
   };
 
-  const tbb::blocked_range<size_t>& half_range{0, height_limit};
+  const tbb::blocked_range<size_t> half_range{0, height_limit};
   tbb::parallel_for(half_range, f);
 
   for (int k = 0; k < height_limit * width; k++)
@@ -161,25 +161,26 @@ void render_mt(std::byte* buffer,
 
   //TODO: Fix range of this loop (computing twice the same lut)...
 
-  std::byte *buff_start = buffer;
-  for (int j = 0; j < height_limit; j++)
-  {
-    rgb8_t* lineptr = reinterpret_cast<rgb8_t*>(buffer);
-    rgb8_t* lineptr_sym = reinterpret_cast<rgb8_t*>(buff_start + stride * (height - 1) - j * stride);
-    for (int i = 0; i < width; i++)
+  auto f2 = [&](const tbb::blocked_range<size_t>& range){
+    for (int j = range.begin(); j < range.end(); j++)
     {
-      double hue = 0.0;
-      int iter = pixels[j * width + i];
-      if (iter == n_iterations)
+      rgb8_t* lineptr = reinterpret_cast<rgb8_t*>(buffer + j * stride);
+      rgb8_t* lineptr_sym = reinterpret_cast<rgb8_t*>(buffer + stride * (height - 1) - j * stride);
+      for (int i = 0; i < width; i++)
       {
-        lineptr[i] = rgb8_t{0,0,0};
-        continue;
+        double hue = 0.0;
+        int iter = pixels[j * width + i];
+        if (iter == n_iterations)
+        {
+          lineptr[i] = rgb8_t{0,0,0};
+          continue;
+        }
+        for (int k = 0; k <= iter; k++)
+          hue += (double(histogram[k]) / double(total));
+        lineptr[i] = heat_lut(hue);
+        lineptr_sym[i] = lineptr[i];
       }
-      for (int k = 0; k <= iter; k++)
-        hue += (double(histogram[k]) / double(total));
-      lineptr[i] = heat_lut(hue);
-      lineptr_sym[i] = lineptr[i];
     }
-    buffer += stride;
-  }
+  };
+  tbb::parallel_for(half_range, f2);
 }
