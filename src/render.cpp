@@ -61,16 +61,16 @@ void render(std::byte* buffer,
   for (int j = 0; j < height_limit; ++j)
   {
 
-    double y0 = double(j) / double(height - 1) * 2 - 1;
+    double y0 = j / double(height - 1) * 2 - 1;
 
     for (int i = 0; i < width; ++i){
 
-      double x0 = double(i) / double(width - 1) * 3.5 - 2.5;
+      double x0 = i / double(width - 1) * 3.5 - 2.5;
       int iteration = 0;
       float x = 0.0;
       float y = 0.0;
 
-      while (x * x + y * y < 2 * 2 && iteration < n_iterations) {
+      while (x * x + y * y < 4.0 && iteration < n_iterations) {
         float xtemp = x * x - y * y + x0;
         y = 2 * x * y + y0;
         x = xtemp;
@@ -78,7 +78,6 @@ void render(std::byte* buffer,
       }
 
       pixels[j * width + i] = iteration;
-      //pixels[(height - 1 - j) * width + i] = iteration;
       total++;
       histogram[iteration] += 1;
     }
@@ -101,7 +100,7 @@ void render(std::byte* buffer,
         continue;
       }
       for (int k = 0; k <= iter; k++)
-        hue += (double(histogram[k]) / double(total));
+        hue += (histogram[k] / double(total));
       lineptr[i] = heat_lut(hue);
       lineptr_sym[i] = lineptr[i];
     }
@@ -126,16 +125,16 @@ void render_mt(std::byte* buffer,
     for (unsigned j = range.begin(); j < range.end(); ++j)
     {
 
-      double y0 = double(j) / double(height - 1) * 2 - 1;
+      double y0 = j / double(height - 1) * 2 - 1;
 
       for (int i = 0; i < width; ++i)
       {
-        double x0 = double(i) / double(width - 1) * 3.5 - 2.5;
+        double x0 = i / double(width - 1) * 3.5 - 2.5;
         int iteration = 0;
         float x = 0.0;
         float y = 0.0;
 
-        while (x * x + y * y < 2 * 2 && iteration < n_iterations) {
+        while (x * x + y * y < 4.0 && iteration < n_iterations) {
           float xtemp = x * x - y * y + x0;
           y = 2 * x * y + y0;
           x = xtemp;
@@ -143,7 +142,6 @@ void render_mt(std::byte* buffer,
         }
 
         pixels[j * width + i] = iteration;
-        //pixels[(height - 1 - j) * width + i] = iteration;
       }
     }
   };
